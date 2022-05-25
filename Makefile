@@ -1,4 +1,4 @@
-# Some stuff
+# Some stuff to help
 
 all:
 
