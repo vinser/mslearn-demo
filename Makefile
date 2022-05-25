@@ -4,7 +4,7 @@
 NAME := flibgolite
 
 VERSION := $(shell git describe --tags --always --dirty)
-GOVERSION := $(shell go version)
+GOVERSION := $(shell go version | cut -c 12- | sed -e 's/ .*//g')
 BUILDTIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 BUILD_GOOS ?= $(shell go env GOOS)
@@ -27,10 +27,10 @@ LDFLAGS := -X 'main.version=$(VERSION)' \
            -X 'main.builder=$(BUILDER)' \
            -X 'main.goversion=$(GOVERSION)'
 
-CMD_SOURCES := $(shell find cmd -name main.go)
-TARGETS := $(patsubst cmd/%/main.go,%,$(CMD_SOURCES))
+CMD_MAIN := $(shell find cmd -name main.go)
+OUTPUT := $(patsubst cmd/%/main.go,%,$(CMD_MAIN))
 
-all: check
+all: build
 
 check:
 
@@ -49,11 +49,16 @@ check:
 	@echo
 	@echo "LDFLAGS:" $(LDFLAGS)
 	@echo
-	@echo "CMD_SOURCES:" $(CMD_SOURCES)
-	@echo "TARGETS:" $(TARGETS)
+	@echo "CMD_MAIN:" $(CMD_MAIN)
+	@echo "OUTPUT:" $(OUTPUT)
 
 
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(TARGETS) $(CMD_SOURCES)
+	go build -ldflags "$(LDFLAGS)" -o $(OUTPUT) $(CMD_MAIN)
 
-.PHONY: all check build 
+xbuild:
+	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-linux-arm64 $(CMD_MAIN)
+	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-linux-amd64 $(CMD_MAIN)
+	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-windows-amd64.exe $(CMD_MAIN)
+
+.PHONY: all check build xbuild
