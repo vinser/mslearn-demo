@@ -2,12 +2,11 @@ package main
 
 import "fmt"
 
-var version, buildTime, builder, goversion string
+var version, buildTime, target, goversion string
 
 func main() {
 	fmt.Println("Hello maker!")
-	fmt.Printf("Version: %s\n", version)
+	fmt.Printf("Version: %s (%s)\n", version, target)
 	fmt.Printf("Build time: %s\n", buildTime)
-	fmt.Printf("Builded by: %s\n", builder)
 	fmt.Printf("Golang version: %s\n", goversion)
 }

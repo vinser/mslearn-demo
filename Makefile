@@ -1,64 +1,66 @@
-# some stuff to help
+# Many mickle makes a Makefile :) 
+
 # variable definitions
 
 NAME := flibgolite
 
 VERSION := $(shell git describe --tags --always --dirty)
-GOVERSION := $(shell go version | cut -c 12- | sed -e 's/ .*//g')
+GOVERSION := $(shell go env GOVERSION)
 BUILDTIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-BUILD_GOOS ?= $(shell go env GOOS)
-BUILD_GOARCH ?= $(shell go env GOARCH)
-
-BUILDER_NAME := $(shell git config user.name)
-ifndef BUILDER_NAME
-$(error "You must set a user.name in your git configuration.")
-endif
-
-EMAIL := $(shell git config user.email)
-ifndef EMAIL
-$(error "You must set a user.email in your git configuration.")
-endif
-
-BUILDER := $(shell echo "${BUILDER_NAME} <${EMAIL}>")
-
-LDFLAGS := -X 'main.version=$(VERSION)' \
-           -X 'main.buildTime=$(BUILDTIME)' \
-           -X 'main.builder=$(BUILDER)' \
-           -X 'main.goversion=$(GOVERSION)'
+HOSTOS := $(shell go env GOHOSTOS)
+HOSTARCH := $(shell go env GOHOSTARCH)
 
 CMD_MAIN := $(shell find cmd -name main.go)
 OUTPUT := $(patsubst cmd/%/main.go,%,$(CMD_MAIN))
 
+
+build_cmd = \
+	GOOS=$(1) \
+	GOARCH=$(2) \
+	$(if $(3),GOARM=$(3)) \
+	go build -ldflags " \
+	-X 'main.version=$(VERSION)' \
+    -X 'main.buildTime=$(BUILDTIME)' \
+    -X 'main.goversion=$(GOVERSION)' \
+	-X 'main.target=$(1)-$(2)$(if $(3),-$(3))'" \
+	-o $(OUTPUT)-$(1)-$(2)$(if $(3),-$(3))$(if $(findstring windows,$(1)),.exe) \
+	$(CMD_MAIN)
 all: build
 
-check:
-
-	@echo "NAME:" $(NAME)
-	@echo
-	@echo "VERSION:" $(VERSION)
-	@echo "GOVERSION:" $(GOVERSION)
-	@echo "BUILDTIME:" $(BUILDTIME)
-	@echo
-	@echo "BUILD_GOOS:" $(BUILD_GOOS)
-	@echo "BUILD_GOARCH:" $(BUILD_GOARCH)
-	@echo
-	@echo "BUILDER_NAME:" $(BUILDER_NAME)
-	@echo "EMAIL:" $(EMAIL)
-	@echo "BUILDER:" $(BUILDER)
-	@echo
-	@echo "LDFLAGS:" $(LDFLAGS)
-	@echo
-	@echo "CMD_MAIN:" $(CMD_MAIN)
-	@echo "OUTPUT:" $(OUTPUT)
-
-
 build:
-	go build -ldflags "$(LDFLAGS)" -o $(OUTPUT) $(CMD_MAIN)
+	$(call build_cmd,$(HOSTOS),$(HOSTARCH),)
 
-xbuild:
-	GOOS=linux GOARCH=arm64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-linux-arm64 $(CMD_MAIN)
-	GOOS=linux GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-linux-amd64 $(CMD_MAIN)
-	GOOS=windows GOARCH=amd64 go build -ldflags "$(LDFLAGS)" -o $(OUTPUT)-windows-amd64.exe $(CMD_MAIN)
+xbuild: linux darwin windows
 
-.PHONY: all check build xbuild
+##### LINUX BUILDS #####
+linux: build_linux_arm build_linux_arm64 build_linux_386 build_linux_amd64
+
+build_linux_386:
+	$(call build_cmd,linux,386,)
+
+build_linux_amd64:
+	$(call build_cmd,linux,amd64,)
+
+build_linux_arm:
+	$(call build_cmd,linux,arm,6)
+
+build_linux_arm64:
+	$(call build_cmd,linux,arm64,)
+
+##### DARWIN (MAC) BUILDS #####
+darwin: build_darwin_amd64
+
+build_darwin_amd64:
+	$(call build_cmd,darwin,amd64,)
+
+##### WINDOWS BUILDS #####
+windows: build_windows_386 build_windows_amd64
+
+build_windows_386:
+	$(call build_cmd,windows,386,)
+
+build_windows_amd64:
+	$(call build_cmd,windows,amd64,)
+
+.PHONY: all check build xbuild linux darwin windows build_linux_arm build_linux_arm64 build_linux_386 build_linux_amd64 build_darwin_amd64 build_windows_386 build_windows_amd64
