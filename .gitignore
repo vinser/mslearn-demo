@@ -1,2 +1,2 @@
-mslearn-demo*
-*.mk
+/mslearn-demo*
+/*.mk
